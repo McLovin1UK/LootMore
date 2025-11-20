@@ -102,7 +102,7 @@ class ArcOverlay:
             # Window has probably been closed
             pass
 
-    def set_stage(self, stage_name: str, stage_index: int):
+    def set_stage(self, stage_name: str, stage_index: int = 0):
         """
         stage_index kept for compatibility but only status text is used.
         """
