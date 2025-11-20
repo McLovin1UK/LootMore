@@ -1,17 +1,23 @@
 import keyboard
 import subprocess
-import os
+import sys
+from pathlib import Path
 
 # Path to the main AI guide script (now includes its own overlay UI)
-script_path = r"C:\AI\ArcGuide\ai_guide_arc_raiders.py"
+SCRIPT_PATH = Path(__file__).resolve().parent / "ai_guide_arc_raiders.py"
 
 
 def run_guide():
+    """Launch the ARC guide script from the same folder as this hotkey helper."""
+    if not SCRIPT_PATH.is_file():
+        print(f"Guide script not found at {SCRIPT_PATH}")
+        return
+
     # Launch a fresh process each time you press ]
     # The overlay appears while it's thinking / talking, then closes.
     subprocess.Popen(
-        ["python", script_path],
-        cwd=os.path.dirname(script_path)
+        [sys.executable, str(SCRIPT_PATH)],
+        cwd=str(SCRIPT_PATH.parent)
     )
 
 

@@ -3,6 +3,9 @@ import io
 import base64
 import tempfile
 import time
+import ctypes
+import subprocess
+import sys
 
 from PIL import ImageGrab
 from openai import OpenAI
@@ -235,8 +238,39 @@ def get_tactical_text(client, image_bytes: bytes) -> str:
     return text[:200]
 
 
-def play_mp3_with_windows(tmp_path: str):
-    os.startfile(tmp_path)
+def _play_mp3_with_winmm(tmp_path: str):
+    """Play an MP3 directly through Windows audio without opening a media player."""
+    alias = f"guide_audio_{int(time.time() * 1000)}"
+
+    def _mci(cmd: str) -> int:
+        return ctypes.windll.winmm.mciSendStringW(cmd, None, 0, None)
+
+    # Open the file as an mpegvideo device and play synchronously.
+    open_cmd = f'open "{tmp_path}" type mpegvideo alias {alias}'
+    if _mci(open_cmd) != 0:
+        raise RuntimeError("winmm could not open MP3")
+
+    try:
+        play_err = _mci(f"play {alias} wait")
+        if play_err != 0:
+            raise RuntimeError("winmm playback error")
+    finally:
+        _mci(f"close {alias}")
+
+
+def play_mp3(tmp_path: str):
+    if os.name == "nt":
+        try:
+            _play_mp3_with_winmm(tmp_path)
+            return
+        except Exception:
+            # Fall back to OS default handler if direct playback fails
+            pass
+        os.startfile(tmp_path)
+        return
+
+    opener = "open" if sys.platform == "darwin" else "xdg-open"
+    subprocess.Popen([opener, tmp_path])
 
 
 def speak_text(client, text: str):
@@ -258,7 +292,7 @@ def speak_text(client, text: str):
     ) as response:
         response.stream_to_file(tmp_path)
 
-    play_mp3_with_windows(tmp_path)
+    play_mp3(tmp_path)
 
 
 # ---------- Main flow with overlay ----------
