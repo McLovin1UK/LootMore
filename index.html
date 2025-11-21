@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lootmore.ai</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --panel: #121622;
+      --accent: #6cf0c2;
+      --accent-strong: #5de2b6;
+      --text: #e8ecf3;
+      --muted: #9aa5c4;
+      --border: #1f2535;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container {
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    header {
+      padding: 24px 0 12px;
+    }
+    .logo {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    nav a {
+      margin-right: 16px;
+      font-weight: 600;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    }
+    .hero {
+      padding: 40px 0 10px;
+    }
+    .hero h1 {
+      font-size: 40px;
+      margin: 0 0 12px;
+      letter-spacing: -0.5px;
+    }
+    .hero p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: linear-gradient(120deg, var(--accent), var(--accent-strong));
+      color: #04100c;
+      box-shadow: 0 12px 30px rgba(92, 237, 182, 0.25);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .card {
+      padding: 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      letter-spacing: -0.2px;
+    }
+    .muted { color: var(--muted); }
+    .tao-section {
+      margin: 36px 0;
+    }
+    .tao-actions { margin-top: 16px; }
+    .inline-link {
+      margin-top: 6px;
+      display: inline-block;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 32px; }
+      .panel { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="container">
+    <div class="logo">Lootmore.ai</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="early-access.html">Early Access</a>
+      <a href="roadmap.html">Roadmap</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="panel hero">
+      <h1>AI loot overlay for gamers</h1>
+      <p>Lootmore surfaces the drops, rolls, and stats that matter—without ever leaving your run.</p>
+      <div class="button-row">
+        <a class="btn btn-primary" href="early-access.html">Get Early Access</a>
+        <a class="btn btn-secondary" href="#roadmap">View roadmap</a>
+      </div>
+    </section>
+
+    <section class="panel tao-section">
+      <h2>TAO-Only Early Access</h2>
+      <p class="muted">Lootmore is a zero-fiat project.</p>
+      <p class="muted">We accept TAO only. No cards. No PayPal. No nonsense.</p>
+      <p class="muted">Your TAO directly supports Lootmore development and future subnet integration.</p>
+      <div class="tao-actions">
+        <a class="btn btn-primary" href="https://YOUR_TAO_CHECKOUT_LINK">Pay with TAO</a>
+        <a class="inline-link" href="https://bittensor.com">What is TAO?</a>
+      </div>
+    </section>
+
+    <section class="panel" id="roadmap">
+      <h2>What we&apos;re building</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Overlay-first UI</h3>
+          <p class="muted">Low-latency overlay that highlights loot without cluttering your field of view.</p>
+        </div>
+        <div class="card">
+          <h3>AI-powered filters</h3>
+          <p class="muted">Smart rules to flag rolls, dupes, and BIS drops so you don&apos;t tab out.</p>
+        </div>
+        <div class="card">
+          <h3>Team-ready</h3>
+          <p class="muted">Share drops with your squad and sync priorities across the run.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

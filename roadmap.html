@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lootmore Roadmap</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --panel: #121622;
+      --accent: #6cf0c2;
+      --accent-strong: #5de2b6;
+      --text: #e8ecf3;
+      --muted: #9aa5c4;
+      --border: #1f2535;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+    }
+    header {
+      padding: 24px 0 12px;
+    }
+    .logo {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    nav a {
+      margin-right: 16px;
+      font-weight: 600;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      margin-top: 20px;
+    }
+    h1, h2 { margin-top: 0; letter-spacing: -0.2px; }
+    .muted { color: var(--muted); }
+    ul { padding-left: 18px; }
+    .cta-inline {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    @media (max-width: 640px) {
+      .panel { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="container">
+    <div class="logo">Lootmore.ai</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="early-access.html">Early Access</a>
+      <a href="roadmap.html">Roadmap</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h1>Roadmap</h1>
+      <p class="muted">Progress on the Lootmore overlay and the milestones we&apos;re tracking.</p>
+      <ul>
+        <li>Overlay performance tuning for top ARPGs.</li>
+        <li>Drop classification improvements with on-device models.</li>
+        <li>Party sync and squad-ready loot calls.</li>
+        <li>Subnet integration experiments and incentives.</li>
+      </ul>
+      <div class="cta-inline">Early access is TAO-only. Unlock the build here → <a href="early-access.html">Early Access</a></div>
+    </section>
+  </main>
+</body>
+</html>
