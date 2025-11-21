@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lootmore Early Access</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --panel: #121622;
+      --accent: #6cf0c2;
+      --accent-strong: #5de2b6;
+      --text: #e8ecf3;
+      --muted: #9aa5c4;
+      --border: #1f2535;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container {
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+    }
+    header {
+      padding: 24px 0 12px;
+    }
+    .logo {
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    nav a {
+      margin-right: 16px;
+      font-weight: 600;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+      margin-top: 20px;
+    }
+    h1, h2 { margin-top: 0; letter-spacing: -0.2px; }
+    .muted { color: var(--muted); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: linear-gradient(120deg, var(--accent), var(--accent-strong));
+      color: #04100c;
+      box-shadow: 0 12px 30px rgba(92, 237, 182, 0.25);
+    }
+    .cta-note { margin-top: 10px; color: var(--muted); font-size: 14px; }
+    @media (max-width: 640px) {
+      .panel { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="container">
+    <div class="logo">Lootmore.ai</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="early-access.html">Early Access</a>
+      <a href="roadmap.html">Roadmap</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h1>Early Access: 0.15 TAO</h1>
+      <p class="muted">Jump into the build and keep us focused on the features you need.</p>
+      <a class="btn btn-primary" href="https://YOUR_TAO_CHECKOUT_LINK">Pay with TAO</a>
+      <div class="cta-note">After payment you’ll be redirected to your download.</div>
+    </section>
+
+    <section class="panel">
+      <h2>What you get today</h2>
+      <p class="muted">Access to the latest overlay build, balance updates, and direct input on priorities.</p>
+    </section>
+  </main>
+</body>
+</html>
