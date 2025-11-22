@@ -1,7 +1,14 @@
 AI Helper For Games
 To Do List:
-- Audio to speakers
-- VPS backend
-- Local program exe
-- Training files
-- UI
+
+Stop the 500: add logs, simplify endpoint, verify it returns anything.
+
+Reinstate vision callout server-side.
+
+Add auth + key hiding for testers.
+
+Add rate limiting properly.
+
+Wire downloads + ship exe.
+
+Then payments + map uploads.
