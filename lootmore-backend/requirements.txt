@@ -5,7 +5,12 @@ psycopg2-binary==2.9.10
 pydantic==2.9.2
 python-dotenv==1.0.1
 requests==2.32.3
+
+# Added from Codex CI/CD branch
 openai==1.51.0
 alembic==1.13.3
 pytest==8.3.3
 httpx==0.27.2
+
+# Added from main branch
+Jinja2==3.1.4
