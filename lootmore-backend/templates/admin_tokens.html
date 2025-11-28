@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lootmore Tokens</title>
+  <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+  <header>
+    <div>Lootmore Admin</div>
+    <nav>
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/logs">Logs</a>
+    </nav>
+  </header>
+  <main>
+    <div class="card">
+      <h2>Create token</h2>
+      <form id="create-form" class="actions">
+        <div>
+          <label for="daily_quota">Daily quota</label>
+          <input id="daily_quota" name="daily_quota" type="number" placeholder="Default" />
+        </div>
+        <input type="submit" value="Create" />
+      </form>
+      <div id="create-result" class="small"></div>
+    </div>
+
+    <div class="card">
+      <h2>Tokens</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Daily quota</th>
+            <th>Used today</th>
+            <th>Last reset</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for token in tokens %}
+          <tr data-token-id="{{ token.id }}">
+            <td>#{{ token.id }}</td>
+            <td>{{ token.daily_quota }}</td>
+            <td>{{ token.used_today }}</td>
+            <td>{{ token.last_reset_at }}</td>
+            <td class="table-actions">
+              <form class="quota-form actions" data-id="{{ token.id }}">
+                <input type="number" name="daily_quota" placeholder="New quota" required />
+                <input type="submit" value="Update" />
+              </form>
+              <form class="revoke-form" data-id="{{ token.id }}">
+                <input type="submit" value="Revoke" class="danger" />
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5">No tokens created yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div id="token-status" class="small"></div>
+    </div>
+  </main>
+  <script>
+    async function apiPost(url, payload) {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(payload)
+      });
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(text || 'Request failed');
+      }
+      return resp.json();
+    }
+
+    const createForm = document.getElementById('create-form');
+    const createResult = document.getElementById('create-result');
+    createForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      createResult.textContent = '';
+      const quota = document.getElementById('daily_quota').value;
+      try {
+        const data = await apiPost('/admin/tokens/create', quota ? { daily_quota: parseInt(quota, 10) } : {});
+        createResult.textContent = `Token created: ${data.token}`;
+      } catch (err) {
+        createResult.textContent = err.message;
+      }
+    });
+
+    document.querySelectorAll('.quota-form').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = parseInt(form.dataset.id, 10);
+        const quota = parseInt(form.elements['daily_quota'].value, 10);
+        const statusEl = document.getElementById('token-status');
+        statusEl.textContent = '';
+        try {
+          await apiPost('/admin/tokens/update', { id, daily_quota: quota });
+          statusEl.textContent = `Updated token #${id}`;
+        } catch (err) {
+          statusEl.textContent = err.message;
+        }
+      });
+    });
+
+    document.querySelectorAll('.revoke-form').forEach((form) => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = parseInt(form.dataset.id, 10);
+        const statusEl = document.getElementById('token-status');
+        statusEl.textContent = '';
+        try {
+          await apiPost('/admin/tokens/revoke', { id });
+          statusEl.textContent = `Revoked token #${id}`;
+          form.closest('tr').remove();
+        } catch (err) {
+          statusEl.textContent = err.message;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
