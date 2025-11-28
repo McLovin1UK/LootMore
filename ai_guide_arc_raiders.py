@@ -14,38 +14,86 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 
+from config import DEFAULT_CONFIG, load_config
+
 # -------- CONFIG --------
-VOICE_SYSTEM_PROMPT = (
-    "You are a veteran ARC Raiders tactical operator viewing a live gameplay screenshot.\n"
-    "\n"
-    "Your job is to give ONE short, sharp, actionable voice callout (max 15 words).\n"
-    "\n"
-    "Priorities for what you describe:\n"
-    "1) ENEMIES & THREATS:\n"
-    "   - If enemies, drones, turrets or obvious danger are visible, mention them FIRST.\n"
-    "   - Call out their direction (left, right, ahead, behind, high ground, low ground).\n"
-    "   - Warn if the player is overexposed, in the open, or about to be flanked.\n"
-    "\n"
-    "2) ENVIRONMENT & OBJECTS AROUND THEM (NOT JUST THE PLAYER):\n"
-    "   - Sometimes talk about the surroundings: cover, high ground, buildings, vehicles,\n"
-    "     loot crates, ammo boxes, extraction points, doors, choke points, vantage points.\n"
-    "   - Don't always focus on the player's gun or HUD; vary between threats and terrain.\n"
-    "\n"
-    "3) LIGHT SOURCES & VISUAL CLARITY:\n"
-    "   - Distinguish between handheld flashlights, weapon lights, and streetlights or mounted lamps.\n"
-    "   - Small, focused beams coming from characters or weapons are flashlights/weapon lights,\n"
-    "     NOT streetlights.\n"
-    "   - Large poles with mounted lights or lamps above roads/structures are streetlights.\n"
-    "\n"
-    "STYLE:\n"
-    "- Tactical, calm, experienced squad leader.\n"
-    "- Max 15 words, no filler, no greetings, no explanations, no second sentence.\n"
-    "- Sound like a quick in-comms callout, not a narrator.\n"
-)
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "lootmore_config.json")
+
+
+VOICE_SYSTEM_PROMPT_TEMPLATE = """You are a veteran ARC Raiders tactical operator viewing a live gameplay screenshot.
+
+Your job is to give ONE short, sharp, actionable voice callout (max {max_words} words).
+
+Priorities for what you describe:
+1) ENEMIES & THREATS:
+   - If enemies, drones, turrets or obvious danger are visible, mention them FIRST.
+   - Call out their direction (left, right, ahead, behind, high ground, low ground).
+   - Warn if the player is overexposed, in the open, or about to be flanked.
+
+2) ENVIRONMENT & OBJECTS AROUND THEM (NOT JUST THE PLAYER):
+   - Sometimes talk about the surroundings: cover, high ground, buildings, vehicles,
+     loot crates, ammo boxes, extraction points, doors, choke points, vantage points.
+   - Don't always focus on the player's gun or HUD; vary between threats and terrain.
+
+3) LIGHT SOURCES & VISUAL CLARITY:
+   - Distinguish between handheld flashlights, weapon lights, and streetlights or mounted lamps.
+   - Small, focused beams coming from characters or weapons are flashlights/weapon lights, NOT streetlights.
+   - Large poles with mounted lights or lamps above roads/structures are streetlights.
+
+STYLE:
+- Tactical, calm, experienced squad leader.
+- Max {max_words} words, no filler, no greetings, no explanations, no second sentence.
+- Sound like a quick in-comms callout, not a narrator.
+- Current focus: {focus}.
+"""
 VISION_MODEL = "gpt-4.1"
 TTS_MODEL    = "gpt-4o-mini-tts"
 TTS_VOICE    = "alloy"
 # ------------------------
+
+
+def _coerce_int(value, default):
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def load_user_config():
+    """Load and validate the user configuration file."""
+    cfg = load_config(CONFIG_PATH)
+
+    cfg["backend_url"] = cfg.get("backend_url") or DEFAULT_CONFIG["backend_url"]
+    cfg["user_token"] = cfg.get("user_token") or DEFAULT_CONFIG["user_token"]
+    cfg["game"] = cfg.get("game") or DEFAULT_CONFIG["game"]
+    cfg["focus"] = cfg.get("focus") or DEFAULT_CONFIG["focus"]
+    cfg["interval"] = cfg.get("interval") or DEFAULT_CONFIG["interval"]
+    cfg["speak"] = bool(cfg.get("speak", DEFAULT_CONFIG["speak"]))
+    cfg["timeout_s"] = _coerce_int(cfg.get("timeout_s"), DEFAULT_CONFIG["timeout_s"])
+    cfg["max_words"] = _coerce_int(cfg.get("max_words"), DEFAULT_CONFIG["max_words"])
+
+    if not cfg.get("backend_url"):
+        raise ValueError("backend_url missing from configuration")
+    if not cfg.get("game"):
+        raise ValueError("game missing from configuration")
+
+    return cfg
+
+
+def build_system_prompt(cfg):
+    return VOICE_SYSTEM_PROMPT_TEMPLATE.format(
+        max_words=cfg.get("max_words", DEFAULT_CONFIG["max_words"]),
+        focus=cfg.get("focus", DEFAULT_CONFIG["focus"]),
+    )
+
+
+def _apply_word_limit(text: str, max_words: int) -> str:
+    if not text:
+        return text
+    words = text.split()
+    if len(words) <= max_words:
+        return text
+    return " ".join(words[:max_words])
 
 
 # ---------- Overlay UI (NO THREADS) ----------
@@ -189,7 +237,7 @@ def extract_text_from_message(message) -> str:
     return " ".join(parts).strip()
 
 
-def get_tactical_text(client, image_bytes: bytes) -> str:
+def get_tactical_text(client, image_bytes: bytes, cfg) -> str:
     """
     Vision call with explicit behavior:
       - Enemies + threats first
@@ -197,11 +245,13 @@ def get_tactical_text(client, image_bytes: bytes) -> str:
       - Strict light-source logic (flashlight vs streetlight)
     """
     b64 = base64.b64encode(image_bytes).decode("ascii")
+    max_words = cfg.get("max_words", DEFAULT_CONFIG["max_words"])
+    focus = cfg.get("focus", DEFAULT_CONFIG["focus"])
 
     resp = client.chat.completions.create(
         model=VISION_MODEL,
         messages=[
-            {"role": "system", "content": VOICE_SYSTEM_PROMPT},
+            {"role": "system", "content": build_system_prompt(cfg)},
             {
                 "role": "user",
                 "content": [
@@ -211,6 +261,7 @@ def get_tactical_text(client, image_bytes: bytes) -> str:
                             "You are seeing a single gameplay frame from a third-person shooter.\n\n"
                             "Look at the WHOLE scene, not just the player or their weapon.\n"
                             "\n"
+                            f"Focus: {focus}.\n"
                             "Rules:\n"
                             "1) If any enemies, drones, turrets, or visible danger exist, call them out first with direction.\n"
                             "2) If no clear enemies, give useful context about surroundings: cover, high ground, loot, vehicles,\n"
@@ -220,7 +271,7 @@ def get_tactical_text(client, image_bytes: bytes) -> str:
                             "   Mounted lamps or tall poles with lights = streetlights/area lights.\n"
                             "\n"
                             "OUTPUT:\n"
-                            "- ONE short tactical callout, max 15 words.\n"
+                            f"- ONE short tactical callout, max {max_words} words.\n"
                             "- No greetings, no fluff, no second sentence."
                         ),
                     },
@@ -232,10 +283,11 @@ def get_tactical_text(client, image_bytes: bytes) -> str:
             },
         ],
         max_tokens=60,
+        timeout=cfg.get("timeout_s"),
     )
 
     text = extract_text_from_message(resp.choices[0].message)
-    return text[:200]
+    return _apply_word_limit(text[:200], max_words)
 
 
 def _play_mp3_with_winmm(tmp_path: str):
@@ -273,11 +325,13 @@ def play_mp3(tmp_path: str):
     subprocess.Popen([opener, tmp_path])
 
 
-def speak_text(client, text: str):
+def speak_text(client, text: str, speak_enabled: bool = True):
     if not text:
         return
 
     print(f"AI: {text}")
+    if not speak_enabled:
+        return
 
     tmp_path = os.path.join(
         tempfile.gettempdir(),
@@ -310,6 +364,15 @@ def main():
 
 
         try:
+            config = load_user_config()
+        except Exception as e:
+            print(f"Config error: {e}")
+            if overlay:
+                overlay.set_error("Config error")
+            return
+
+
+        try:
             client = get_client()
         except Exception as e:
             print(f"Error creating OpenAI client: {e}")
@@ -336,7 +399,7 @@ def main():
 
         try:
             start_ai = time.time()
-            text = get_tactical_text(client, img_bytes)
+            text = get_tactical_text(client, img_bytes, config)
             ai_latency = time.time() - start_ai
             if overlay:
                 overlay.set_latency("AI latency", ai_latency)
@@ -353,7 +416,7 @@ def main():
 
         try:
             start_tts = time.time()
-            speak_text(client, text)
+            speak_text(client, text, speak_enabled=config.get("speak", True))
             tts_latency = time.time() - start_tts
             if overlay:
                 overlay.set_latency("TTS latency", tts_latency)
