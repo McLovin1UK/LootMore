@@ -78,7 +78,7 @@ def _parse_raw_token(auth_header: str | None) -> str:
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {"status": "ok"}
 
 
 @app.post("/callout", response_model=CalloutResponse)
