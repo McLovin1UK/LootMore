@@ -1,0 +1,10 @@
+{
+  "backend_url": "https://api.lootmore.ai/callout",
+  "user_token": "",
+  "game": "ARC Raiders",
+  "timeout_s": 60,
+  "focus": "Tactical callouts",
+  "speak": true,
+  "max_words": 15,
+  "interval": "off"
+}
