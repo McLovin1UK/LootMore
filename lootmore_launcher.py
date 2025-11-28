@@ -1,14 +1,21 @@
 """Simple Lootmore launcher for configuring and running client scripts."""
+import json
 import os
 import subprocess
 import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk, messagebox
+from urllib import request
 
-from config import DEFAULT_CONFIG, load_config, save_config
+from client.logging_setup import get_logger
+from client.onboarding import run_onboarding_if_needed
+from config import DEFAULT_CONFIG, get_config_path, get_version, load_config, save_config
 
-BASE_DIR = os.path.dirname(__file__)
-CONFIG_PATH = os.path.join(BASE_DIR, "lootmore_config.json")
+LOGGER = get_logger("lootmore.launcher")
+BASE_DIR = Path(__file__).resolve().parent
+CONFIG_PATH = get_config_path()
+APP_VERSION = get_version()
 
 script_map = {
     "ARC Raiders": "ai_guide_arc_raiders.py",
@@ -18,9 +25,10 @@ script_map = {
 class LauncherApp:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Lootmore Launcher")
+        self.root.title(f"Lootmore Launcher v{APP_VERSION}")
 
-        self.config_data = load_config(CONFIG_PATH)
+        run_onboarding_if_needed(str(CONFIG_PATH))
+        self.config_data = load_config(str(CONFIG_PATH))
 
         self.backend_var = tk.StringVar(value=self.config_data.get("backend_url", DEFAULT_CONFIG["backend_url"]))
         self.token_var = tk.StringVar(value=self.config_data.get("user_token", DEFAULT_CONFIG["user_token"]))
@@ -30,8 +38,10 @@ class LauncherApp:
         self.speak_var = tk.BooleanVar(value=bool(self.config_data.get("speak", DEFAULT_CONFIG["speak"])))
         self.max_words_var = tk.StringVar(value=str(self.config_data.get("max_words", DEFAULT_CONFIG["max_words"])))
         self.interval_var = tk.StringVar(value=self.config_data.get("interval", DEFAULT_CONFIG["interval"]))
+        self.auto_start_var = tk.BooleanVar(value=bool(self.config_data.get("auto_start", DEFAULT_CONFIG["auto_start"])) )
 
         self.status_var = tk.StringVar(value="")
+        self.update_status_var = tk.StringVar(value="")
 
         self._build_ui()
 
@@ -71,19 +81,32 @@ class LauncherApp:
         interval_box = ttk.Combobox(frame, textvariable=self.interval_var, values=["off", "15s", "30s", "60s"], state="readonly")
         add_labeled(interval_box, "Interval", 7)
 
+        auto_start_check = ttk.Checkbutton(frame, text="Launch at login (hotkey helper)", variable=self.auto_start_var)
+        add_labeled(auto_start_check, "Auto-start", 8)
+
+        version_label = ttk.Label(frame, text=f"Launcher version {APP_VERSION}", foreground="#555")
+        version_label.grid(column=0, row=9, columnspan=2, sticky="w", pady=(4, 0))
+
         button_row = ttk.Frame(frame)
-        button_row.grid(column=0, row=8, columnspan=2, sticky="ew", pady=(10, 0))
+        button_row.grid(column=0, row=10, columnspan=2, sticky="ew", pady=(10, 0))
         button_row.columnconfigure(0, weight=1)
         button_row.columnconfigure(1, weight=1)
+        button_row.columnconfigure(2, weight=1)
 
         save_btn = ttk.Button(button_row, text="Save Config", command=self.save_config)
         save_btn.grid(column=0, row=0, sticky="ew", padx=(0, 6))
 
         launch_btn = ttk.Button(button_row, text="Launch", command=self.launch)
-        launch_btn.grid(column=1, row=0, sticky="ew", padx=(6, 0))
+        launch_btn.grid(column=1, row=0, sticky="ew", padx=6)
+
+        update_btn = ttk.Button(button_row, text="Check Updates", command=self.check_updates)
+        update_btn.grid(column=2, row=0, sticky="ew", padx=(6, 0))
 
         status_label = ttk.Label(frame, textvariable=self.status_var, foreground="#555")
-        status_label.grid(column=0, row=9, columnspan=2, sticky="w", pady=(8, 0))
+        status_label.grid(column=0, row=11, columnspan=2, sticky="w", pady=(8, 0))
+
+        update_status_label = ttk.Label(frame, textvariable=self.update_status_var, foreground="#777")
+        update_status_label.grid(column=0, row=12, columnspan=2, sticky="w", pady=(0, 0))
 
     def _parse_int(self, value, default):
         try:
@@ -101,12 +124,14 @@ class LauncherApp:
             "speak": bool(self.speak_var.get()),
             "max_words": self._parse_int(self.max_words_var.get(), DEFAULT_CONFIG["max_words"]),
             "interval": self.interval_var.get().strip() or DEFAULT_CONFIG["interval"],
+            "auto_start": bool(self.auto_start_var.get()),
         }
         return data
 
     def save_config(self):
         data = self._collect_config()
-        save_config(data, CONFIG_PATH)
+        save_config(data, str(CONFIG_PATH))
+        LOGGER.info("Configuration saved to %s", CONFIG_PATH)
         self.status_var.set("Configuration saved.")
         return data
 
@@ -126,8 +151,36 @@ class LauncherApp:
         try:
             subprocess.Popen([sys.executable, target_path], cwd=BASE_DIR)
             self.status_var.set(f"Launched {game} guide…")
+            LOGGER.info("Launched %s", game)
         except Exception as exc:
             messagebox.showerror("Launch error", str(exc))
+
+    def _build_manifest_url(self, cfg):
+        if cfg.get("update_manifest_url"):
+            return cfg["update_manifest_url"]
+        backend = (cfg.get("backend_url") or DEFAULT_CONFIG["backend_url"]).rstrip("/")
+        if backend.endswith("/callout"):
+            backend = backend.rsplit("/", 1)[0]
+        return f"{backend}/version.json"
+
+    def check_updates(self):
+        cfg = self._collect_config()
+        manifest_url = self._build_manifest_url(cfg)
+        LOGGER.info("Checking update manifest at %s", manifest_url)
+        self.update_status_var.set("Checking for updates…")
+        try:
+            with request.urlopen(manifest_url, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            remote_version = data.get("version")
+            if remote_version and remote_version != APP_VERSION:
+                self.update_status_var.set(f"Update available: {remote_version} (current {APP_VERSION})")
+            elif remote_version:
+                self.update_status_var.set(f"Up to date (v{APP_VERSION})")
+            else:
+                self.update_status_var.set("No version info in manifest.")
+        except Exception as exc:
+            LOGGER.warning("Update check failed: %s", exc)
+            self.update_status_var.set("Update check failed (placeholder only)")
 
     def run(self):
         self.root.mainloop()
@@ -139,4 +192,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        LOGGER.exception("Launcher crashed")
+        raise
