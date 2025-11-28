@@ -4,12 +4,20 @@ import logging
 import os
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 import openai
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from database import Base, engine, get_db
+from security import verify_token
 
 logger = logging.getLogger("lootmore.callout")
 logging.basicConfig(level=logging.INFO)
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -24,6 +32,11 @@ class CalloutRequest(BaseModel):
 class CalloutResponse(BaseModel):
     text: str
     audio_b64: str
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=400, content={"error": "Invalid JSON"})
 
 
 def _extract_text(message: Any) -> str:
@@ -53,13 +66,14 @@ def _extract_text(message: Any) -> str:
     return DEFAULT_CALLOUT
 
 
-def _validate_auth_token(auth_header: str | None) -> None:
+def _parse_raw_token(auth_header: str | None) -> str:
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
 
-    token = auth_header.removeprefix("Bearer ").strip()
+    token = auth_header.split(" ", 1)[1].strip()
     if not token:
         raise HTTPException(status_code=401, detail="Missing or invalid token")
+    return token
 
 
 @app.get("/health")
@@ -68,8 +82,15 @@ def health():
 
 
 @app.post("/callout", response_model=CalloutResponse)
-async def callout(request: CalloutRequest, authorization: str | None = Header(default=None)):
-    _validate_auth_token(authorization)
+async def callout(
+    request: CalloutRequest,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    raw_token = _parse_raw_token(authorization)
+    token = verify_token(raw_token, db)
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
 
     try:
         image_bytes = base64.b64decode(request.image_b64)
@@ -107,7 +128,7 @@ async def callout(request: CalloutRequest, authorization: str | None = Header(de
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("Callout generation failed")
-        raise HTTPException(status_code=500, detail="Callout generation failed") from exc
+        return JSONResponse(status_code=500, content={"error": "AI processing failed"})
 
     callout_text = _extract_text(completion.choices[0].message)
     if not callout_text:
@@ -124,7 +145,7 @@ async def callout(request: CalloutRequest, authorization: str | None = Header(de
             audio_bytes = response.read()
     except Exception as exc:  # noqa: BLE001
         logger.exception("TTS generation failed")
-        raise HTTPException(status_code=500, detail="Audio generation failed") from exc
+        return JSONResponse(status_code=500, content={"error": "AI processing failed"})
 
     audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
 
