@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lootmore Logs</title>
+  <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+  <header>
+    <div>Lootmore Admin</div>
+    <nav>
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/tokens">Tokens</a>
+      <a href="/admin/logs">Logs</a>
+    </nav>
+  </header>
+  <main>
+    <div class="card">
+      <h2>Recent logs</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Token</th>
+            <th>Timestamp</th>
+            <th>IP</th>
+            <th>Latency</th>
+            <th>Text length</th>
+            <th>Success</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td>{{ log.id }}</td>
+            <td>#{{ log.token_id }}</td>
+            <td>{{ log.timestamp }}</td>
+            <td>{{ log.request_ip or '—' }}</td>
+            <td>{{ log.latency_ms or 0 }} ms</td>
+            <td>{{ log.text_length or 0 }}</td>
+            <td>{{ '✅' if log.success else '❌' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7">No logs yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+</body>
+</html>

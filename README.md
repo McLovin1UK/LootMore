@@ -12,3 +12,7 @@ Add rate limiting properly.
 Wire downloads + ship exe.
 
 Then payments + map uploads.
+
+Packaging
+---------
+For Windows EXE or installer builds, see `PACKAGING.md` for step-by-step instructions using PyInstaller + NSIS.

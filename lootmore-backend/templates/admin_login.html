@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Lootmore Admin Login</title>
+  <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+  <header>
+    <div>Lootmore Admin</div>
+  </header>
+  <main>
+    <div class="card" style="max-width:420px;margin:0 auto;">
+      <h2>Admin Access</h2>
+      <p class="small">Enter the admin password to start a session.</p>
+      <form id="login-form">
+        <label for="password">Admin password</label>
+        <input id="password" name="password" type="password" required />
+        <input type="submit" value="Login" />
+      </form>
+      <div id="login-status" class="small"></div>
+    </div>
+  </main>
+  <script>
+    const form = document.getElementById('login-form');
+    const statusEl = document.getElementById('login-status');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = 'Signing in...';
+      const password = document.getElementById('password').value;
+      try {
+        const resp = await fetch('/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        if (!resp.ok) {
+          throw new Error('Invalid password');
+        }
+        statusEl.textContent = 'Success! Redirecting...';
+        window.location.href = '/admin/dashboard';
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>
