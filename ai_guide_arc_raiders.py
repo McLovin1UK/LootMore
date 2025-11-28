@@ -14,10 +14,12 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 
-from config import DEFAULT_CONFIG, load_config
+from client.logging_setup import get_logger
+from config import DEFAULT_CONFIG, get_config_path, load_config
 
 # -------- CONFIG --------
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "lootmore_config.json")
+CONFIG_PATH = str(get_config_path())
+logger = get_logger("lootmore.arc_guide")
 
 
 VOICE_SYSTEM_PROMPT_TEMPLATE = """You are a veteran ARC Raiders tactical operator viewing a live gameplay screenshot.
@@ -62,6 +64,8 @@ def _coerce_int(value, default):
 def load_user_config():
     """Load and validate the user configuration file."""
     cfg = load_config(CONFIG_PATH)
+
+    logger.info("Loaded configuration from %s", CONFIG_PATH)
 
     cfg["backend_url"] = cfg.get("backend_url") or DEFAULT_CONFIG["backend_url"]
     cfg["user_token"] = cfg.get("user_token") or DEFAULT_CONFIG["user_token"]
@@ -354,46 +358,43 @@ def speak_text(client, text: str, speak_enabled: bool = True):
 def main():
     overlay = None
     try:
-        # Init overlay
+        logger.info("Starting ARC Raiders guide")
         try:
             overlay = Overlay()
             overlay.update("Lootmore AI Online\nIdle…")
         except Exception as e:
-            print(f"Overlay init failed: {e}")
+            logger.warning("Overlay init failed: %s", e)
             overlay = None
-
 
         try:
             config = load_user_config()
         except Exception as e:
-            print(f"Config error: {e}")
+            logger.error("Config error: %s", e)
             if overlay:
                 overlay.set_error("Config error")
             return
 
-
         try:
             client = get_client()
         except Exception as e:
-            print(f"Error creating OpenAI client: {e}")
+            logger.error("Error creating OpenAI client: %s", e)
             if overlay:
                 overlay.set_error("OpenAI client error")
             return
-
-        print("Taking screenshot…")
+        logger.info("Taking screenshot…")
         if overlay:
             overlay.update("Capturing screenshot…",)
 
         try:
             img_bytes = take_screenshot()
         except Exception as e:
-            print(f"Screenshot failed: {e}")
-            print("If this happens in full-screen, try borderless windowed mode.")
+            logger.error("Screenshot failed: %s", e)
+            logger.info("If this happens in full-screen, try borderless windowed mode.")
             if overlay:
                 overlay.update("Screenshot failed")
             return
 
-        print("Getting tactical guidance from AI…")
+        logger.info("Getting tactical guidance from AI…")
         if overlay:
             overlay.set_stage("Contacting AI…",)
 
@@ -401,16 +402,17 @@ def main():
             start_ai = time.time()
             text = get_tactical_text(client, img_bytes, config)
             ai_latency = time.time() - start_ai
+            logger.info("AI latency: %.2fs", ai_latency)
             if overlay:
                 overlay.set_latency("AI latency", ai_latency)
                 overlay.update("AI reply ready",)
         except Exception as e:
-            print(f"Error from GPT: {e}")
+            logger.error("Error from GPT: %s", e)
             if overlay:
                 overlay.set_error("GPT error")
             return
 
-        print("Speaking response…")
+        logger.info("Speaking response…")
         if overlay:
             overlay.set_stage("Playing TTS…", 4)
 
@@ -418,24 +420,32 @@ def main():
             start_tts = time.time()
             speak_text(client, text, speak_enabled=config.get("speak", True))
             tts_latency = time.time() - start_tts
+            logger.info("TTS latency: %.2fs", tts_latency)
             if overlay:
                 overlay.set_latency("TTS latency", tts_latency)
         except Exception as e:
-            print(f"Error in TTS playback: {e}")
+            logger.error("Error in TTS playback: %s", e)
             if overlay:
                 overlay.set_error("TTS error")
             return
 
-        # Keep overlay visible for a bit so you actually see it
         if overlay:
             time.sleep(2.0)
             overlay.set_stage("Idle", 0)
             time.sleep(0.5)
 
+    except Exception:
+        logger.exception("Unhandled error in ARC Raiders guide")
+        if overlay:
+            overlay.set_error("Crash - see log")
     finally:
         if overlay:
             overlay.stop()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("Fatal error running ARC Raiders guide")
+        raise
