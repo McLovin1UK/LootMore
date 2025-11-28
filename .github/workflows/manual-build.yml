@@ -1,0 +1,44 @@
+name: Build Windows EXE (manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+          pip install pyinstaller nsis pillow keyboard openai requests
+
+      - name: Install NSIS
+        run: |
+          choco install nsis -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          python scripts/build_installer.py
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: LootmoreSetup
+          path: dist/LootmoreSetup.exe
+          if-no-files-found: error
+
+      - name: Upload portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: LootmoreExecutable
+          path: dist/Lootmore.exe
+          if-no-files-found: warn
