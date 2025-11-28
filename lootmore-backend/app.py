@@ -1,9 +1,10 @@
 import base64
+import binascii
 import logging
 import os
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, Header, HTTPException
 import openai
 from pydantic import BaseModel
 
@@ -15,9 +16,14 @@ app = FastAPI()
 DEFAULT_CALLOUT = "Callout unavailable right now. Backend wired up."
 
 
-class CalloutResult(BaseModel):
-    callout: str
-    error: str | None = None
+class CalloutRequest(BaseModel):
+    image_b64: str
+    game: str
+
+
+class CalloutResponse(BaseModel):
+    text: str
+    audio_b64: str
 
 
 def _extract_text(message: Any) -> str:
@@ -47,37 +53,52 @@ def _extract_text(message: Any) -> str:
     return DEFAULT_CALLOUT
 
 
+def _validate_auth_token(auth_header: str | None) -> None:
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
+
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
 
 
-@app.post("/callout", response_model=CalloutResult)
-async def callout(image: UploadFile):
-    # Read image from the POST request
-    img_bytes = await image.read()
-    logger.info("Callout request received: bytes=%s filename=%s", len(img_bytes), image.filename)
+@app.post("/callout", response_model=CalloutResponse)
+async def callout(request: CalloutRequest, authorization: str | None = Header(default=None)):
+    _validate_auth_token(authorization)
 
-    img_b64 = base64.b64encode(img_bytes).decode("utf-8")
+    try:
+        image_bytes = base64.b64decode(request.image_b64)
+    except (binascii.Error, ValueError) as exc:  # noqa: B905
+        raise HTTPException(status_code=400, detail="Invalid image_b64") from exc
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        logger.warning("OPENAI_API_KEY not set; returning placeholder callout")
-        return CalloutResult(callout=DEFAULT_CALLOUT, error="missing_api_key")
+        logger.error("OPENAI_API_KEY not set")
+        raise HTTPException(status_code=500, detail="Missing OpenAI API key")
 
     client = openai.OpenAI(api_key=api_key)
 
+    encoded_image = base64.b64encode(image_bytes).decode("utf-8")
+
     try:
-        response = client.chat.completions.create(
+        completion = client.chat.completions.create(
             model="gpt-4.1",
             messages=[
-                {"role": "system", "content": "You are the Lootmore tactical AI."},
+                {
+                    "role": "system",
+                    "content": "You are the Lootmore tactical AI. Respond with a single short tactical callout.",
+                },
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "input_image",
-                            "image_url": f"data:image/png;base64,{img_b64}",
+                            "image_url": f"data:image/png;base64,{encoded_image}",
                         },
                         {"type": "text", "text": "Give tactical callout."},
                     ],
@@ -86,9 +107,25 @@ async def callout(image: UploadFile):
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("Callout generation failed")
-        raise HTTPException(status_code=502, detail="Callout generation failed") from exc
+        raise HTTPException(status_code=500, detail="Callout generation failed") from exc
 
-    callout_text = _extract_text(response.choices[0].message)
+    callout_text = _extract_text(completion.choices[0].message)
+    if not callout_text:
+        callout_text = DEFAULT_CALLOUT
+
     logger.info("Callout generated: %s", callout_text)
 
-    return CalloutResult(callout=callout_text)
+    try:
+        with client.audio.speech.with_streaming_response.create(
+            model="gpt-4o-mini-tts",
+            voice="alloy",
+            input=callout_text,
+        ) as response:
+            audio_bytes = response.read()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("TTS generation failed")
+        raise HTTPException(status_code=500, detail="Audio generation failed") from exc
+
+    audio_b64 = base64.b64encode(audio_bytes).decode("utf-8")
+
+    return {"text": callout_text, "audio_b64": audio_b64}
