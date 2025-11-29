@@ -16,19 +16,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        shell: pwsh
         run: |
           if (Test-Path requirements.txt) { pip install -r requirements.txt }
-
-      - name: Install PyInstaller
-        shell: pwsh
-        run: |
-          pip install pyinstaller
+          pip install pyinstaller nsis pillow keyboard openai requests
 
       - name: Install NSIS
-        uses: repolevedavaj/install-nsis@v1.1.0
-        with:
-          nsis-version: '3.10'
+        run: |
+          choco install nsis -y
 
       - name: Build installer
         shell: pwsh
