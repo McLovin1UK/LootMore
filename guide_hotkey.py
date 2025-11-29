@@ -2,6 +2,7 @@ import keyboard
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from client.logging_setup import get_logger
@@ -12,10 +13,19 @@ SCRIPT_PATH = Path(__file__).resolve().parent / "ai_guide_arc_raiders.py"
 CONFIG_PATH = get_config_path()
 STARTUP_KEY_NAME = "LootmoreHotkey"
 LOGGER = get_logger("lootmore.hotkey")
+COOLDOWN_S = 4.0
+_last_trigger_ts = 0.0
 
 
 def run_guide():
     """Launch the ARC guide script from the same folder as this hotkey helper."""
+    global _last_trigger_ts
+
+    now = time.monotonic()
+    if now - _last_trigger_ts < COOLDOWN_S:
+        LOGGER.info("Hotkey pressed during cooldown; ignoring.")
+        return
+
     if not SCRIPT_PATH.is_file():
         LOGGER.error("Guide script not found at %s", SCRIPT_PATH)
         return
@@ -26,6 +36,7 @@ def run_guide():
         [sys.executable, str(SCRIPT_PATH)],
         cwd=str(SCRIPT_PATH.parent)
     )
+    _last_trigger_ts = now
 
 
 def _set_startup(enable: bool) -> bool:
