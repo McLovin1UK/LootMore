@@ -23,8 +23,9 @@ jobs:
           pip install pyinstaller pillow keyboard openai requests
 
       - name: Install NSIS
-        run: |
-          choco install nsis -y
+        uses: repolevedavaj/install-nsis@v1.1.0
+        with:
+          nsis-version: '3.10'
 
       - name: Build installer
         shell: pwsh

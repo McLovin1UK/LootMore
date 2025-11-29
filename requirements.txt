@@ -1,0 +1,5 @@
+pyinstaller
+pillow
+keyboard
+openai
+requests
