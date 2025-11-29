@@ -1,9 +1,7 @@
-name: Build Windows Installer
+name: Build Windows EXE (manual)
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:

@@ -7,7 +7,7 @@ The repo already includes a build script and NSIS template to produce a one-file
 - Python 3.10+ available in `PATH`
 - `pip install --upgrade pip`
 - Build tools: `pip install pyinstaller` (CLI: `pyinstaller`)
-- Optional installer wrapping: [NSIS](https://nsis.sourceforge.io/Download) installed and `makensis` available in `PATH` (e.g., `choco install nsis`)
+- Optional installer wrapping: [NSIS](https://nsis.sourceforge.io/Download) installed and `makensis` available in `PATH` (e.g., `choco install nsis`). NSIS is **not** a Python package, so do not add it to `pip` requirements.
 
 ## Quick one-file EXE (no installer)
 1. Clone or pull the repository.
@@ -16,6 +16,15 @@ The repo already includes a build script and NSIS template to produce a one-file
    python scripts/build_installer.py --skip-nsis
    ```
 3. The single-file executable will be written to `dist/Lootmore.exe`. Double-click to launch.
+
+## Build an EXE without leaving GitHub
+If you just need a Windows EXE/installer and don't have a local Windows machine handy:
+
+1. Go to **Actions → Build Windows EXE (manual)** in GitHub.
+2. Click **Run workflow** and confirm. The job uses the same build script as the release workflow.
+3. When the workflow completes, download artifacts:
+   - `LootmoreExecutable` → `Lootmore.exe` (portable one-file build)
+   - `LootmoreSetup` → `LootmoreSetup.exe` (installer wrapping the portable build)
 
 ## Full installer build (LootmoreSetup.exe)
 1. Ensure NSIS is installed and `makensis` is in `PATH`.
