@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
           if (Test-Path requirements.txt) { pip install -r requirements.txt }
-          pip install pyinstaller nsis pillow keyboard openai requests
+          pip install pyinstaller pillow keyboard openai requests
 
       - name: Install NSIS
         run: |
