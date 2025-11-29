@@ -7,7 +7,7 @@ import ctypes
 import subprocess
 import sys
 
-from PIL import ImageGrab
+from PIL import ImageGrab, Image
 from openai import OpenAI
 
 import tkinter as tk
@@ -22,32 +22,17 @@ CONFIG_PATH = str(get_config_path())
 logger = get_logger("lootmore.arc_guide")
 
 
-VOICE_SYSTEM_PROMPT_TEMPLATE = """You are a veteran ARC Raiders tactical operator viewing a live gameplay screenshot.
-
-Your job is to give ONE short, sharp, actionable voice callout (max {max_words} words).
-
-Priorities for what you describe:
-1) ENEMIES & THREATS:
-   - If enemies, drones, turrets or obvious danger are visible, mention them FIRST.
-   - Call out their direction (left, right, ahead, behind, high ground, low ground).
-   - Warn if the player is overexposed, in the open, or about to be flanked.
-
-2) ENVIRONMENT & OBJECTS AROUND THEM (NOT JUST THE PLAYER):
-   - Sometimes talk about the surroundings: cover, high ground, buildings, vehicles,
-     loot crates, ammo boxes, extraction points, doors, choke points, vantage points.
-   - Don't always focus on the player's gun or HUD; vary between threats and terrain.
-
-3) LIGHT SOURCES & VISUAL CLARITY:
-   - Distinguish between handheld flashlights, weapon lights, and streetlights or mounted lamps.
-   - Small, focused beams coming from characters or weapons are flashlights/weapon lights, NOT streetlights.
-   - Large poles with mounted lights or lamps above roads/structures are streetlights.
-
-STYLE:
-- Tactical, calm, experienced squad leader.
-- Max {max_words} words, no filler, no greetings, no explanations, no second sentence.
-- Sound like a quick in-comms callout, not a narrator.
-- Current focus: {focus}.
-"""
+VOICE_SYSTEM_PROMPT_TEMPLATE = (
+    "You are a veteran ARC Raiders squad leader viewing a gameplay screenshot.\n"
+    "Give ONE short, tactical callout (max {max_words} words).\n\n"
+    "Priority:\n"
+    "1) Enemies/threats first with direction (left/right/ahead/behind/high/low).\n"
+    "2) If no clear enemies, comment on cover, high ground, loot, chokepoints or extraction.\n"
+    "3) Distinguish lights: small beams from weapons/characters = flash/weapon lights;\n"
+    "   tall poles or mounted lamps = street/area lights.\n\n"
+    "Style: calm, concise, no greetings, no explanations, no second sentence.\n"
+    "Current focus: {focus}."
+)
 VISION_MODEL = "gpt-4.1"
 TTS_MODEL    = "gpt-4o-mini-tts"
 TTS_VOICE    = "alloy"
@@ -221,10 +206,19 @@ def get_client():
 
 
 def take_screenshot():
-    """Grab full-screen screenshot and return raw PNG bytes."""
+    """Grab screenshot, downscale, and return PNG bytes."""
     img = ImageGrab.grab()
+
+    # Downscale for speed while keeping aspect ratio
+    max_width = 1280
+    w, h = img.size
+    if w > max_width:
+        ratio = max_width / float(w)
+        new_size = (int(w * ratio), int(h * ratio))
+        img = img.resize(new_size, Image.LANCZOS)
+
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
 
 
@@ -262,21 +256,11 @@ def get_tactical_text(client, image_bytes: bytes, cfg) -> str:
                     {
                         "type": "text",
                         "text": (
-                            "You are seeing a single gameplay frame from a third-person shooter.\n\n"
-                            "Look at the WHOLE scene, not just the player or their weapon.\n"
-                            "\n"
+                            "Single ARC Raiders frame. Look at the whole scene, not just the player.\n"
                             f"Focus: {focus}.\n"
-                            "Rules:\n"
-                            "1) If any enemies, drones, turrets, or visible danger exist, call them out first with direction.\n"
-                            "2) If no clear enemies, give useful context about surroundings: cover, high ground, loot, vehicles,\n"
-                            "   extraction points, doors, choke points, vantage points.\n"
-                            "3) Try to vary your focus: sometimes enemies, sometimes terrain, sometimes loot/objectives.\n"
-                            "4) Small concentrated light beams from characters/weapons = flashlights or weapon lights.\n"
-                            "   Mounted lamps or tall poles with lights = streetlights/area lights.\n"
-                            "\n"
-                            "OUTPUT:\n"
-                            f"- ONE short tactical callout, max {max_words} words.\n"
-                            "- No greetings, no fluff, no second sentence."
+                            "Rules: enemies/threats first with direction. If none, call out useful terrain, cover, loot, objectives.\n"
+                            "Light check: tight beams from characters/weapons = flash/weapon lights; poles or mounted lamps = street/area lights.\n"
+                            f"Output: one tactical callout, max {max_words} words. No greeting or filler."
                         ),
                     },
                     {
@@ -337,10 +321,8 @@ def speak_text(client, text: str, speak_enabled: bool = True):
     if not speak_enabled:
         return
 
-    tmp_path = os.path.join(
-        tempfile.gettempdir(),
-        "ai_guide_arc_raiders.mp3"
-    )
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+        tmp_path = tmp.name
 
     # Use the streaming API properly to avoid the deprecation warning
     with client.audio.speech.with_streaming_response.create(
