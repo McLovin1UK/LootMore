@@ -1,54 +1,62 @@
-AI Helper For Games
+# LootMore – AI Game Helper
 
-📁 test_assets/nsfw/ — Synthetic Safety Test Images
+LootMore is an AI assistant for PC games.
 
-The test_assets/nsfw/ directory contains fully synthetic, non-explicit test images used to validate LootMore’s safety, filtering, and fallback behaviour.
-These assets are intentionally simple, generated procedurally, and do not contain any real NSFW content.
+Press a hotkey, it grabs a screenshot, sends it to an AI backend, and plays back a short tactical callout in your headset so you can loot more, die less, and climb faster.
 
-They are used to test:
+This repo contains:
 
-Image classification & red-flag detection
+- The **Windows client** (overlay + hotkey + launcher)
+- The **FastAPI backend** (tokens, rate-limits, OpenAI calls)
+- The **website** (landing + early-access pages)
+- **Test assets** for safety / NSFW handling
 
-Fallback behaviour when sensitive content is flagged
+---
 
-UI overlays that activate during unsafe states
+## What LootMore does
 
-Pipeline stability when processing edge-case textures
+High level:
 
-End-to-end callout suppression logic
+1. You run LootMore alongside your game on Windows.
+2. You hit a hotkey (`]` by default).
+3. The client:
+   - takes a screenshot of your current screen,
+   - (optionally) downscales it for speed,
+   - sends it + your selected game/focus to the backend.
+4. The backend calls OpenAI with a vision + text prompt and returns:
+   - a **short tactical callout** string, and
+   - pre-generated **TTS audio** (mp3) or instructions for the client to call TTS.
+5. The client plays the callout in your headset and shows a tiny overlay with status/latency.
 
-Included files
-File	Purpose
-test1_orange_skin_patch.png	Uniform peach-tone texture used to test false-positive skin detection behaviour.
-test2_suggestive_silhouette_block.png	Abstract silhouette block used to test classifier sensitivity to shapes and outlines.
-test3_red_flag_overlay.png	Half-red synthetic warning-style tile with blurred highlight area, used to test UI red-flag overlays.
-test*.b64 files	Original base64 sources for reproducibility.
-make_nsfw_test_assets.py	Script used to regenerate all assets deterministically.
-Why these assets exist
+No memory reading, no injection, no game file tampering. It’s built to behave like a friend watching your screen, not a cheat.
 
-LootMore requires robust handling of sensitive imagery in future gameplay, creator-tools, and public-facing features. These placeholder images allow testing of:
+---
 
-Sensitivity thresholds
+## Repo structure
 
-Rate limiting
+Rough layout (omitting some files for brevity):
 
-Redaction modes
-
-Emergency fallback responses
-
-Logging & audit trails
-
-AI inference consistency
-
-They simulate potentially problematic visual structures without ever using real NSFW content.
-
-Regenerating the assets
-
-To rebuild the PNGs from scratch:
-
-py test_assets/nsfw/make_nsfw_test_assets.py
-
-
-This ensures deterministic, reproducible assets for QA and future automation pipelines.
-
-
+```text
+LootMore/
+├── client/                    # Client-side helpers (onboarding, logging, etc.)
+├── installer/                 # NSIS / packaging bits for Windows installer
+├── lootmore-backend/          # FastAPI backend (tokens, auth, callout pipeline)
+│   ├── app/                   # Main backend app (routes, auth, models, etc.)
+│   └── alembic/               # Database migrations
+├── scripts/                   # Build scripts (e.g. installer build)
+├── test_assets/
+│   └── nsfw/                  # Synthetic test images for safety testing
+├── .env.example               # Example backend environment config
+├── .gitignore
+├── PACKAGING.md               # Detailed packaging instructions for Windows EXE
+├── VERSION                    # Client/launcher version string
+├── ai_guide_arc_raiders.py    # Main ARC Raiders client guide/overlay
+├── arc_guide.py               # Legacy shim pointing to the updated guide
+├── config.py                  # Shared client config helpers
+├── early-access.html          # Early access landing page
+├── index.html                 # Main lootmore.ai marketing page
+├── lootmore_config.json       # Example local client config
+├── lootmore_launcher.py       # Windows launcher UI for configuring & running client
+├── roadmap.html               # Roadmap/“where this is going” page
+├── requirements.txt           # Backend + shared Python deps
+└── README.md                  # You are here
