@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+
+# Build / dist
+build/
+dist/
+*.exe
+*.msi
+
+# Env & secrets
+.env
+.env.*
+*.env
+*.log
+config.json
+lootmore_config.json
+client_config.json
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
