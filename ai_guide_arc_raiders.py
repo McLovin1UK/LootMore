@@ -7,6 +7,11 @@ import ctypes
 import subprocess
 import sys
 
+try:
+    import pyttsx3  # type: ignore
+except ImportError:
+    pyttsx3 = None
+
 from PIL import ImageGrab, Image
 from openai import OpenAI
 
@@ -321,18 +326,32 @@ def speak_text(client, text: str, speak_enabled: bool = True):
     if not speak_enabled:
         return
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-        tmp_path = tmp.name
+    if pyttsx3 is not None:
+        try:
+            engine = getattr(speak_text, "_engine", None)
+            if engine is None:
+                engine = pyttsx3.init()
+                speak_text._engine = engine
+            engine.say(text)
+            engine.runAndWait()
+            return
+        except Exception as e:
+            print(f"Local TTS failed, falling back to OpenAI TTS: {e}", file=sys.stderr)
 
-    # Use the streaming API properly to avoid the deprecation warning
-    with client.audio.speech.with_streaming_response.create(
-        model=TTS_MODEL,
-        voice=TTS_VOICE,
-        input=text,
-    ) as response:
-        response.stream_to_file(tmp_path)
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp_path = tmp.name
 
-    play_mp3(tmp_path)
+        with client.audio.speech.with_streaming_response.create(
+            model=TTS_MODEL,
+            voice=TTS_VOICE,
+            input=text,
+        ) as response:
+            response.stream_to_file(tmp_path)
+
+        play_mp3(tmp_path)
+    except Exception as e:
+        print(f"OpenAI TTS fallback failed: {e}", file=sys.stderr)
 
 
 # ---------- Main flow with overlay ----------

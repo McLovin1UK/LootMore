@@ -3,3 +3,4 @@ pillow
 keyboard
 openai
 requests
+pyttsx3
