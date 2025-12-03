@@ -22,6 +22,20 @@ import threading
 from client.logging_setup import get_logger
 from config import DEFAULT_CONFIG, get_config_path, load_config
 
+import sys
+
+# Windows-only TTS via SAPI
+IS_WINDOWS = (os.name == "nt")
+_sapi_voice = None
+
+if IS_WINDOWS:
+    try:
+        import win32com.client  # type: ignore
+        _sapi_voice = win32com.client.Dispatch("SAPI.SpVoice")
+    except Exception as e:
+        print(f"Windows TTS init failed, will fall back to OpenAI TTS: {e}", file=sys.stderr)
+
+
 # -------- CONFIG --------
 CONFIG_PATH = str(get_config_path())
 logger = get_logger("lootmore.arc_guide")
@@ -319,6 +333,13 @@ def play_mp3(tmp_path: str):
 
 
 def speak_text(client, text: str, speak_enabled: bool = True):
+    """
+    Speak the tactical callout.
+
+    Preference order:
+    1) Local Windows TTS (SAPI) if available and speak_enabled=True.
+    2) Fallback to OpenAI TTS (original behaviour) if SAPI is unavailable or fails.
+    """
     if not text:
         return
 
@@ -326,6 +347,7 @@ def speak_text(client, text: str, speak_enabled: bool = True):
     if not speak_enabled:
         return
 
+<<<<<<< Updated upstream
     if pyttsx3 is not None:
         try:
             engine = getattr(speak_text, "_engine", None)
@@ -352,6 +374,34 @@ def speak_text(client, text: str, speak_enabled: bool = True):
         play_mp3(tmp_path)
     except Exception as e:
         print(f"OpenAI TTS fallback failed: {e}", file=sys.stderr)
+=======
+    # --- Fast path: local Windows TTS ---
+    if _sapi_voice is not None:
+        try:
+            # Blocking call: speaks the text and then returns.
+            _sapi_voice.Speak(text)
+            return
+        except Exception as e:
+            # Don't kill the whole flow if Windows TTS explodes; fall back instead.
+            print(f"Local Windows TTS failed, falling back to OpenAI TTS: {e}", file=sys.stderr)
+
+    # --- Fallback: original OpenAI TTS path ---
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+            tmp_path = tmp.name
+
+        with client.audio.speech.with_streaming_response.create(
+            model=TTS_MODEL,
+            voice=TTS_VOICE,
+            input=text,
+        ) as response:
+            response.stream_to_file(tmp_path)
+
+        play_mp3(tmp_path)
+    except Exception as e:
+        print(f"TTS playback failed: {e}", file=sys.stderr)
+
+>>>>>>> Stashed changes
 
 
 # ---------- Main flow with overlay ----------
