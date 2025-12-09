@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,6 +13,18 @@
       --text: #e8ecf3;
       --muted: #9aa5c4;
       --border: #1f2535;
+      color-scheme: dark;
+    }
+
+    :root[data-theme="light"] {
+      --bg: #f4f6fb;
+      --panel: #ffffff;
+      --accent: #2c7be5;
+      --accent-strong: #1a6bdc;
+      --text: #0b0d12;
+      --muted: #5b6376;
+      --border: #e3e8f2;
+      color-scheme: light;
     }
     * { box-sizing: border-box; }
     body {
@@ -37,10 +49,26 @@
       font-weight: 700;
       letter-spacing: 0.5px;
     }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
     nav a {
-      margin-right: 16px;
       font-weight: 600;
     }
+    .theme-toggle {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .theme-toggle:hover { transform: translateY(-1px); }
     .panel {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -131,6 +159,7 @@
       <a href="index.html">Home</a>
       <a href="early-access.html">Early Access</a>
       <a href="roadmap.html">Roadmap</a>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Toggle dark mode"></button>
     </nav>
   </header>
 
@@ -173,5 +202,26 @@
       </div>
     </section>
   </main>
+  <script>
+    const root = document.documentElement;
+    const toggleButton = document.getElementById('theme-toggle');
+    const storedTheme = localStorage.getItem('theme');
+    const defaultTheme = storedTheme || 'dark';
+
+    const applyTheme = (theme) => {
+      root.setAttribute('data-theme', theme);
+      toggleButton.textContent = theme === 'dark' ? 'Dark mode: On' : 'Dark mode: Off';
+      toggleButton.setAttribute('aria-pressed', theme === 'dark');
+    };
+
+    applyTheme(defaultTheme);
+
+    toggleButton.addEventListener('click', () => {
+      const currentTheme = root.getAttribute('data-theme');
+      const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme);
+      localStorage.setItem('theme', nextTheme);
+    });
+  </script>
 </body>
 </html>
