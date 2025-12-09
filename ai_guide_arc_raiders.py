@@ -3,7 +3,6 @@ import io
 import base64
 import tempfile
 import time
-import ctypes
 import subprocess
 import sys
 
@@ -21,8 +20,6 @@ import threading
 
 from client.logging_setup import get_logger
 from config import DEFAULT_CONFIG, get_config_path, load_config
-
-import sys
 
 # Windows-only TTS via SAPI
 IS_WINDOWS = (os.name == "nt")
